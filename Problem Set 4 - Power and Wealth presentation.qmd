@@ -1,0 +1,203 @@
+---
+title: "Wealth and the Structure of National Power"
+subtitle: "How does GDP per capita relate to different dimensions of national power?"
+author: "Ally Denton"
+institute: "American University"
+format: 
+  beamer:
+    theme: Singapore
+    colortheme: rose
+    aspectratio: 32
+knitr: 
+  opts_chunk: 
+    echo: false
+    eval: true
+    prompt: false
+    tidy: false
+    message: FALSE
+    warning: FALSE
+    fig.align: "center"
+fontsize: 10pt
+---
+
+```{r}
+
+library(tidyverse)
+library(knitr)
+library(ggrepel)
+library(patchwork)
+library(broom)
+
+df <- read_csv("global_power.csv")
+
+df1 <- df %>%
+  select(
+    country,
+    region,
+    gdp_per_capita,
+    economic_power,
+    tech_power,
+    military_power,
+    power_index,
+    power_rank
+  ) 
+
+df_scaled <- df1 %>%
+  mutate(across(c(power_index, economic_power, tech_power, military_power), scale))
+
+```
+
+
+## Overview
+
+National power is central to debates in international politics, but it is inherently multidimensional. This project examines whether wealth translates uniformly across different components (economic, military, and technological) of state power.
+
+**Central Findings**
+
+-   Wealth is positively associated with all dimensions of national power, but not equally across them.
+-  The strength of this relationship varies across economic, military, and technological power.
+-  Some countries deviate from the general pattern.
+
+## The Data: Global Power and Economic Indicators
+
+Dataset: Global Power and Economic Indicators
+
+- This dataset has 250 observations and combines publicly available data from the World Bank Open Data API and the REST Countries API.
+- The dataset includes indicators of economic, technological, and military capacity, as well as a composite measure of national power for countries.
+- The core variables for this project are: 
+  -  country
+  -  gdp_per_capita
+  -  economic_power (GDP × GDP growth)
+  -  tech_power (Internet usage × High-tech exports)
+  -  military_power (Military spending)
+  -  power_index (combination of the power components)
+  -  power_rank
+
+
+## A Glimpse into the Power Index, GDP per Capita, and Power Rank
+
+```{r}
+#| label: tbl-top5
+
+top5 <- df1 %>%
+  arrange(power_rank) %>%
+  select(country, power_rank, power_index, gdp_per_capita) %>%
+  head(5) %>%
+  kable(digits = 1L,
+        caption = "Top 5 Countries by Power Rank")
+
+top5
+
+```
+
+-  Based on @tbl-top5, high GDP per capita does not guarantee high national power. 
+
+## Inconsistencies in GDP per Capita and Power
+
+```{r}
+#| label: fig-power
+#| fig-width: 10
+#| fig-asp: 0.37
+#| fig-cap: "GDP per Capita and Power"
+
+power <- ggplot(df1, aes(x = gdp_per_capita, y = power_index)) +
+  geom_point(alpha = 0.8, color = "black") +
+  geom_smooth(method = "lm", se = FALSE, size = 1, color = "magenta2") +
+  geom_label_repel(
+    data = df1 %>% 
+      filter(country %in% c("United States", "China", "Monaco")),
+    aes(label = country),
+    size = 3.5
+  ) +
+  labs(
+    x = "GDP per Capita",
+    y = "Power Index",
+    title = NULL
+  ) +
+  theme_minimal()
+
+power
+
+```
+
+-  Outliers like Monaco and China show that wealth alone may not determine power.
+
+## Strength of the Relationships: Regression Results
+
+```{r}
+#| label: tbl-lm
+
+m1 <- lm(power_index ~ gdp_per_capita, df1)
+m2 <- lm(economic_power ~ gdp_per_capita, df1)
+m3 <- lm(tech_power ~ gdp_per_capita, df1)
+m4 <- lm(military_power ~ gdp_per_capita, df1)
+
+results <- bind_rows(
+  tidy(m1) %>% mutate(model = "Power Index"),
+  tidy(m2) %>% mutate(model = "Economic Power"),
+  tidy(m3) %>% mutate(model = "Tech Power"),
+  tidy(m4) %>% mutate(model = "Military Power")
+)
+
+table_lm <- results %>%
+  filter(term == "gdp_per_capita") %>%
+  select(model, estimate, p.value) %>%
+  kable(digits = 4L, 
+        col.names = c("Power Component", "Beta Coefficient", "P Value"),
+        caption = "Relationship Between GDP per Capita and Power Dimensions")
+
+table_lm
+
+
+```
+
+-  The estimated coefficients are larger for economic and military power than for technological power, indicating that wealth is more strongly associated with economic and military dimensions of power than with technological power.
+
+## Wealth and the Dimensions of National Power
+
+```{r}
+#| label: fig-components
+#| fig-width: 7
+#| fig-asp: 0.36
+#| fig-cap: "GDP per Capita and Different Dimensions of National Power"
+ 
+
+scaled <- df_scaled %>%
+  pivot_longer(cols = c(economic_power, tech_power, military_power),
+               names_to = "power_component",
+               values_to = "value") %>%
+  ggplot(aes(x = gdp_per_capita, y = value, 
+             color = power_component,
+             linetype = power_component)) +
+  geom_point(alpha = .65) +
+  geom_smooth(method = "lm", se = FALSE, size = 1) +
+  labs(
+    title = NULL,
+    x = "GDP per Capita",
+    y = "Standardized Index Values",
+    color = "Power Component",
+    linetype = "Power Component"
+  ) +
+  scale_color_manual(values = c('coral', 'red4', 'steelblue1')) +
+  scale_linetype_manual(values = c(
+  "economic_power" = "solid",
+  "military_power" = "dotted",
+  "tech_power" = "dashed")) +
+  theme_minimal() +
+  theme(legend.position = "right")
+
+scaled
+
+```
+
+-  @fig-components shows that GDP per capita aligns more closely with economic and military outcomes than with technological outcomes, where the relationship is weaker and more dispersed.
+
+
+## Conclusion
+
+-  Wealth is consistently associated with higher levels of national power, but the strength of this relationship varies across different dimensions.
+-  @tbl-lm and @fig-components suggest that wealth more reliably translates into economic and military capacity than into technological capacity, indicating that GDP per capita operates more as a general enabling resource than a uniform driver of national power.
+- Outliers such as Monaco and China highlight that state size and strategic priorities can condition how effectively wealth translates into power.
+
+
+**Overall, wealth is a necessary but insufficient foundation for national power; it enables, but does not guarantee, a state’s ability to project influence across economic, military, and technological domains.**
