@@ -220,34 +220,7 @@ lin.reg.all <- (lin.reg + lin.reg1 + lin.reg2 + lin.reg3 ) +
 
 lin.reg.all 
 
-chat <- df_scaled %>%
-  pivot_longer(cols = c(power_index, economic_power, tech_power, military_power),
-               names_to = "power_component",
-               values_to = "value") %>%
-  ggplot(aes(x = gdp_per_capita, y = value, color = power_component)) +
-  geom_point(alpha = .8) +
-  geom_smooth(method = "lm", se = FALSE, size = 1) +
-  scale_x_log10() +
-  labs(
-    title = "GDP per Capita and Standardized Power Measures",
-    x = "GDP per Capita",
-    y = "Standardized Index Values",
-    color = "Power Component"
-  ) +
-  scale_color_manual(values = c('coral', 'steelblue1', 'magenta2', 'red4')) +
-  geom_label_repel(
-    data = df_scaled %>% 
-      filter(country %in% c("United States", "China", "Monaco")),
-    aes(x = gdp_per_capita, y = power_index, label = country),
-    inherit.aes = FALSE,
-    size = 2.2
-    ) +
-  theme_minimal() +
-  theme(legend.position = "right")
-
-chat
-
-scaled <- chat <- df_scaled %>%
+scaled <- df_scaled %>%
   pivot_longer(cols = c(power_index, economic_power, tech_power, military_power),
                names_to = "power_component",
                values_to = "value") %>%
